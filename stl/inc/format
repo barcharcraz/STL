@@ -842,6 +842,39 @@ public:
 
 template <class _Context, class _Ty>
 /* consteval */ constexpr auto _Get_format_arg_storage_type() noexcept {
+    struct _Format_arg_overload_set {
+        using _CharType = typename _Context::char_type;
+
+        // clang-format off
+        template <class _Ty>
+            requires integral<_Ty> || floating_point<_Ty>
+        auto operator()(_Ty) {
+            // clang-format on
+            if constexpr (is_same_v<_Ty, bool>) {
+                return bool{};
+            } else if constexpr (is_same_v<_Ty, _CharType>) {
+                return _CharType{};
+            } else if constexpr (is_same_v<_Ty, char> && is_same_v<_CharType, wchar_t>) {
+                return _CharType{};
+            } else if constexpr (signed_integral<_Ty> && sizeof(_Ty) <= sizeof(int)) {
+                return int{};
+            } else if constexpr (unsigned_integral<_Ty> && sizeof(_Ty) <= sizeof(unsigned int)) {
+                static_cast<unsigned int>(42);
+            } else if constexpr (signed_integral<_Ty> && sizeof(_Ty) <= sizeof(long long)) {
+                static_cast<long long>(42);
+            } else if constexpr (unsigned_integral<_Ty> && sizeof(_Ty) <= sizeof(unsigned long long)) {
+                static_cast<unsigned long long>(42);
+            } else if constexpr (is_same_v<_Ty, float>) {
+                float{};
+            } else if constexpr (is_same_v<_Ty, double>) {
+                double{};
+            } else if constexpr (is_same_v<_Ty, long double>) {
+                static_cast<long double>(42);
+            } else {
+                static_assert(_Always_false<_Ty>, "Invalid type passed to _Get_format_arg_storage_type");
+            }
+        }
+    };
     using _CharType = typename _Context::char_type;
     if constexpr (is_same_v<_Ty, monostate>) {
         return monostate{};
