@@ -359,6 +359,36 @@ _NODISCARD constexpr const _CharT* _Parse_arg_id(
     throw format_error("Invalid format string.");
 }
 
+_NODISCARD inline constexpr bool _Is_between(char32_t _Val, char32_t _Low, char32_t _High) {
+    return _Low <= _Val && _Val <= _High;
+}
+_NODISCARD inline constexpr int _Estimated_width(char32_t _Ch) {
+    if (_Is_between(_Ch, U'\x1100', U'\x115F') || _Is_between(_Ch, U'\x2329', U'\x232A')
+        || _Is_between(_Ch, U'\x2E80', U'\x303E') || _Is_between(_Ch, U'\x3040', U'\xA4CF')
+        || _Is_between(_Ch, U'\xAC00', U'\xD7A3') || _Is_between(_Ch, U'\xF900', U'\xFAFF')
+        || _Is_between(_Ch, U'\xFE10', U'\xFE19') || _Is_between(_Ch, U'\xFE30', U'\xFE6F')
+        || _Is_between(_Ch, U'\xFF00', U'\xFF60') || _Is_between(_Ch, U'\xFFE0', U'\xFFE6')
+        || _Is_between(_Ch, U'\x1F300', U'\x1F64F') || _Is_between(_Ch, U'\x1F900', U'\x1F9FF')
+        || _Is_between(_Ch, U'\x20000', U'\x2FFFD') || _Is_between(_Ch, U'\x30000', U'\x3FFFD')) {
+        return 2;
+    } else {
+        return 1;
+    }
+}
+
+int _Code_point_length(char) {
+    return 1;
+}
+int _Code_point_length(wchar_t _Ch) {
+    // note that dispite _UNICODE determining if the crt is USC-2 or UTF-16, we
+    // just always
+    if (0xD800 <= static_cast<uint16_t>(_Ch) && static_cast<uint16_t>(_Ch) <= 0xDFFF) {
+        return 2;
+    } else {
+        return 1;
+    }
+}
+
 template <class _CharT, _Parse_spec_callbacks<_CharT> _Callbacks_type>
 _NODISCARD constexpr const _CharT* _Parse_align(
     const _CharT* _Begin, const _CharT* _End, _Callbacks_type&& _Callbacks) {
@@ -366,8 +396,7 @@ _NODISCARD constexpr const _CharT* _Parse_align(
     // align and fill
     auto _Parsed_align = _Align::_None;
 
-    // TODO: should increment one code point
-    auto _Align_pt = _Begin + 1;
+    auto _Align_pt = _Begin + _Code_point_length(*_Begin);
     if (_Align_pt == _End) {
         _Align_pt = _Begin;
     }
