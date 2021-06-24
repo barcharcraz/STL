@@ -1,0 +1,42 @@
+{
+    "version": 2,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "cl"
+            }
+        },
+        {
+            "name": "x86",
+            "inherits": "base",
+            "architecture": {
+                "value": "x86"
+            }
+        },
+        {
+            "name": "x64",
+            "inherits": "base",
+            "architecture": {
+                "value": "x64"
+            }
+        },
+        {
+            "name": "ARM",
+            "inherits": "base",
+            "architecture": {
+                "value": "arm"
+            }
+        },
+        {
+            "name": "ARM64",
+            "inherits": "base",
+            "architecture": {
+                "value": "arm64"
+            }
+        }
+    ]
+}
