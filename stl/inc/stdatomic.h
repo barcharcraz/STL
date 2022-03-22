@@ -7,7 +7,13 @@
 #ifndef _STDATOMIC_H_
 #define _STDATOMIC_H_
 
-#if defined(RC_INVOKED) || defined(Q_MOC_RUN) || defined(__midl)
+#if defined(__clang__)
+#pragma push_macro("__has_include_next")
+#define __has_include_next(X) 0
+#undef __CLANG_STDATOMIC_H
+#include <stdatomic.h>
+#pragma pop_macro("__has_include_next")
+#elif defined(RC_INVOKED) || defined(Q_MOC_RUN) || defined(__midl)
 // do nothing, see _STL_COMPILER_PREPROCESSOR in yvals_core.h
 #else // ^^^ non-compiler tools / C and C++ compilers vvv
 // provide a specific error message for C compilers, before the general error message in yvals_core.h
