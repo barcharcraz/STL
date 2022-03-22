@@ -9,12 +9,37 @@
 
 #if defined(RC_INVOKED) || defined(Q_MOC_RUN) || defined(__midl)
 // do nothing, see _STL_COMPILER_PREPROCESSOR in yvals_core.h
-#else // ^^^ non-compiler tools / C and C++ compilers vvv
-// provide a specific error message for C compilers, before the general error message in yvals_core.h
-#ifndef __cplusplus
-#error <stdatomic.h> is not yet supported when compiling as C, but this is planned for a future release.
-#endif // __cplusplus
-#endif // ^^^ C and C++ compilers ^^^
+#elif !defined(__cplusplus) // ^^^ non-compiler tools / C and C++ compilers vvv
+
+enum memory_order {
+    memory_order_relaxed,
+    memory_order_consume,
+    memory_order_acquire,
+    memory_order_release,
+    memory_order_acq_rel,
+    memory_order_seq_cst
+};
+
+struct atomic_flag {
+#error "TODO, need atomic qualifier"
+#if 1 // TRANSITION, ABI
+    // _Atomic long _Storage;
+#else
+    // _Atomic bool _Storage
+#endif
+};
+#endif // ^^^ C / C++ compilers vvv
+
+#define ATOMIC_BOOL_LOCK_FREE     2
+#define ATOMIC_CHAR_LOCK_FREE     2
+#define ATOMIC_CHAR16_T_LOCK_FREE 2
+#define ATOMIC_CHAR32_T_LOCK_FREE 2
+#define ATOMIC_WCHAR_T_LOCK_FREE  2
+#define ATOMIC_SHORT_LOCK_FREE    2
+#define ATOMIC_INT_LOCK_FREE      2
+#define ATOMIC_LONG_LOCK_FREE     2
+#define ATOMIC_LLONG_LOCK_FREE    2
+#define ATOMIC_POINTER_LOCK_FREE  2
 
 #include <yvals.h>
 #if _STL_COMPILER_PREPROCESSOR
