@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-#include <assert.h>
+#include <cassert>
+#include <cstddef>
+#include <cstdio>
 #include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <map>
 #include <memory>
 #include <set>
-#include <stddef.h>
-#include <stdio.h>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -657,7 +657,7 @@ void test_unordered_set() {
     test_merge<Set, std::unordered_multiset>();
 }
 
-void test_gh1309() {
+void test_gh_1309() {
     // Guard against regression of GH-1309, in which node handles were incorrectly destroying the user value with a node
     // allocator rather than a value_type allocator as the Standard requires.
 
@@ -801,5 +801,5 @@ int main() {
     test_unordered_set<std::unordered_set>();
     test_unordered_set<std::unordered_multiset>();
 
-    test_gh1309();
+    test_gh_1309();
 }

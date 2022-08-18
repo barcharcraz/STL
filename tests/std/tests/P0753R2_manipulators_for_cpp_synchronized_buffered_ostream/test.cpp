@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-#include <assert.h>
+#include <cassert>
 #include <ios>
 #include <memory>
 #include <sstream>
@@ -48,7 +48,7 @@ void test_osyncstream_manipulators(
 
     assert(addressof(emit_on_flush(os)) == addressof(os));
     if constexpr (is_base_of_v<basic_osyncstream<char_type, traits_type, Alloc>, Ty>) {
-        auto* aSyncbuf = static_cast<basic_syncbuf<char_type, traits_type, Alloc>*>(os.rdbuf());
+        const auto aSyncbuf = static_cast<basic_syncbuf<char_type, traits_type, Alloc>*>(os.rdbuf());
         assert(aSyncbuf->_Stl_internal_check_get_emit_on_sync() == true);
         if (buf) {
             assert(buf->str == "");
@@ -77,7 +77,7 @@ void test_osyncstream_manipulators(
 
     assert(addressof(noemit_on_flush(os)) == addressof(os));
     if constexpr (is_base_of_v<basic_osyncstream<char_type, traits_type, Alloc>, Ty>) {
-        auto* aSyncbuf = static_cast<basic_syncbuf<char_type, traits_type, Alloc>*>(os.rdbuf());
+        const auto aSyncbuf = static_cast<basic_syncbuf<char_type, traits_type, Alloc>*>(os.rdbuf());
         assert(aSyncbuf->_Stl_internal_check_get_emit_on_sync() == false);
     }
 
