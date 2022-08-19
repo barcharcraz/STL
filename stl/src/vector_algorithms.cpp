@@ -37,6 +37,7 @@ extern "C" long __isa_enabled;
 #endif // !_DEBUG
 
 namespace {
+#if defined(_M_IX86) || defined(_VECTOR_X64)
     bool _Use_avx2() noexcept {
         return __isa_enabled & (1 << __ISA_AVAILABLE_AVX2);
     }
@@ -52,6 +53,7 @@ namespace {
         return true;
 #endif // _M_IX86
     }
+#endif // defined(_M_IX86) || defined(_VECTOR_X64)
 
     template <class _BidIt>
     void _Reverse_tail(_BidIt _First, _BidIt _Last) noexcept {
@@ -1408,7 +1410,7 @@ namespace {
 
     struct _Find_traits_1 {
         static constexpr size_t _Shift = 0;
-
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         static __m256i _Set_avx(const uint8_t _Val) noexcept {
             return _mm256_set1_epi8(_Val);
         }
@@ -1428,11 +1430,21 @@ namespace {
         static bool _Sse_available() noexcept {
             return _Use_sse2();
         }
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+        static __n128 _Set_neon(const uint8_t _Val) {
+            return neon_dupqr8(_Val);
+        }
+        static __n128 _Cmp_neon(const __n128 _Lhs, const __n128 _Rhs) {
+            return neon_cmeqq8(_Lhs, _Rhs);
+        }
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
     };
 
     struct _Find_traits_2 {
         static constexpr size_t _Shift = 1;
-
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         static __m256i _Set_avx(const uint16_t _Val) noexcept {
             return _mm256_set1_epi16(_Val);
         }
@@ -1452,11 +1464,23 @@ namespace {
         static bool _Sse_available() noexcept {
             return _Use_sse2();
         }
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+        static __n128 _Set_neon(const uint16_t _Val) {
+            return neon_dupqr16(_Val);
+        }
+
+        static __n128 _Cmp_neon(const __n128 _Lhs, const __n128 _Rhs) {
+            return neon_cmeqq16(_Lhs, _Rhs);
+        }
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
     };
 
     struct _Find_traits_4 {
         static constexpr size_t _Shift = 2;
 
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         static __m256i _Set_avx(const uint32_t _Val) noexcept {
             return _mm256_set1_epi32(_Val);
         }
@@ -1476,11 +1500,23 @@ namespace {
         static bool _Sse_available() noexcept {
             return _Use_sse2();
         }
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+        static __n128 _Set_neon(const uint32_t _Val) {
+            return neon_dupqr32(_Val);
+        }
+
+        static __n128 _Cmp_neon(const __n128 _Lhs, const __n128 _Rhs) {
+            return neon_cmeqq32(_Lhs, _Rhs);
+        }
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
     };
 
     struct _Find_traits_8 {
         static constexpr size_t _Shift = 3;
 
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         static __m256i _Set_avx(const uint64_t _Val) noexcept {
             return _mm256_set1_epi64x(_Val);
         }
@@ -1500,6 +1536,17 @@ namespace {
         static bool _Sse_available() noexcept {
             return _Use_sse42(); // for pcmpeqq on _Cmp_sse
         }
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+        static __n128 _Set_neon(const uint64_t _Val) {
+            return neon_dupqr64(_Val);
+        }
+
+        static __n128 _Cmp_neon(const __n128 _Lhs, const __n128 _Rhs) {
+            return neon_cmeqq64(_Lhs, _Rhs);
+        }
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
     };
 
     // The below functions have exactly the same signature as the extern "C" functions, up to calling convention.
