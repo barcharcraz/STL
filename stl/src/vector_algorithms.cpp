@@ -121,7 +121,11 @@ __declspec(noalias) void __cdecl __std_swap_ranges_trivially_swappable_noalias(
     }
 
     constexpr size_t _Mask_16 = ~((static_cast<size_t>(1) << 4) - 1);
-    if (_Byte_length(_First1, _Last1) >= 16 && _Use_sse2()) {
+    if (_Byte_length(_First1, _Last1) >= 16
+#if defined(_M_IX86) || defined(_VECTOR_X64)
+        && _Use_sse2()
+#endif
+    ) {
         const void* _Stop_at = _First1;
         _Advance_bytes(_Stop_at, _Byte_length(_First1, _Last1) & _Mask_16);
         do {
@@ -471,7 +475,11 @@ __declspec(noalias) void __cdecl __std_reverse_trivially_swappable_8(void* _Firs
         } while (_First != _Stop_at);
     }
 
-    if (_Byte_length(_First, _Last) >= 32 && _Use_sse2()) {
+    if (_Byte_length(_First, _Last) >= 32
+#if defined(_M_IX86) || defined(_VECTOR_X64)
+        && _Use_sse2()
+#endif
+    ) {
         const void* _Stop_at = _First;
         _Advance_bytes(_Stop_at, _Byte_length(_First, _Last) >> 5 << 4);
         do {
@@ -671,7 +679,11 @@ __declspec(noalias) void __cdecl __std_reverse_copy_trivially_copyable_4(
         } while (_Dest != _Stop_at);
     }
 
-    if (_Byte_length(_First, _Last) >= 16 && _Use_sse2()) {
+    if (_Byte_length(_First, _Last) >= 16
+#if defined(_M_IX86) || defined(_VECTOR_X64)
+        && _Use_sse2()
+#endif
+    ) {
         const void* _Stop_at = _Dest;
         _Advance_bytes(_Stop_at, _Byte_length(_First, _Last) >> 4 << 4);
         do {
@@ -727,7 +739,11 @@ __declspec(noalias) void __cdecl __std_reverse_copy_trivially_copyable_8(
         } while (_Dest != _Stop_at);
     }
 
-    if (_Byte_length(_First, _Last) >= 16 && _Use_sse2()) {
+    if (_Byte_length(_First, _Last) >= 16
+#if defined(_M_IX86) || defined(_VECTOR_X64)
+        && _Use_sse2()
+#endif
+    ) {
         const void* _Stop_at = _Dest;
         _Advance_bytes(_Stop_at, _Byte_length(_First, _Last) >> 4 << 4);
         do {
