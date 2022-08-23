@@ -658,7 +658,9 @@ __declspec(noalias) void __cdecl __std_reverse_copy_trivially_copyable_4(
     ) {
         const void* _Stop_at = _Dest;
         _Advance_bytes(_Stop_at, _Byte_length(_First, _Last) >> 5 << 5);
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         const __m256i _Shuf = _mm256_set_epi32(0, 1, 2, 3, 4, 5, 6, 7);
+#endif
         do {
             _Advance_bytes(_Last, -32);
 #if defined(_M_IX86) || defined(_VECTOR_X64)
@@ -861,6 +863,7 @@ namespace {
         static constexpr _Signed_t _Init_min_val = static_cast<_Signed_t>(0x7F);
         static constexpr _Signed_t _Init_max_val = static_cast<_Signed_t>(0x80);
 
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         static __m128i _Sign_correction(const __m128i _Val, const bool _Sign) noexcept {
             alignas(16) static constexpr _Unsigned_t _Sign_corrections[2][16] = {
                 {0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}, {}};
@@ -923,6 +926,75 @@ namespace {
         static __m128i _Max(const __m128i _First, const __m128i _Second, __m128i) noexcept {
             return _mm_max_epi8(_First, _Second);
         }
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+        static __n128 _Sign_correction(const __n128 _Val, const bool _Sign) noexcept {
+            alignas(16) static constexpr _Unsigned_t _Sign_corrections[2][16] = {
+                {0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}, {}};
+            return neon_subq8(_Val, neon_ld1m_q8(reinterpret_cast<const char*>(_Sign_corrections[_Sign])));
+        }
+
+        static __n128 _Inc(__n128 _Idx) noexcept {
+            return neon_addq8(_Idx, neon_dupqr8(1));
+        }
+
+        template <class _Fn>
+        static __n128 _H_func(const __n128 _Cur, _Fn _Funct) noexcept {
+            uint8_t _H_min_val = neon_uminvq8(_Cur)
+                const char _Shuf_bytes_imm[] = {14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1};
+            const char _Shuf_words_imm[] = {13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2};
+            const __n128 _Shuf_bytes = neon_ld1m_q8(_Shuf_bytes_imm);
+            const __n128 _Shuf_words = neon_ld1m_q8(_Shuf_words_imm);
+
+            ___n128 _H_min_val = _Cur;
+            _H_min_val = _Funct(_H_min_val, _mm_shuffle_epi32(_H_min_val, _MM_SHUFFLE(1, 0, 3, 2)));
+            _H_min_val = _Funct(_H_min_val, _mm_shuffle_epi32(_H_min_val, _MM_SHUFFLE(2, 3, 0, 1)));
+            _H_min_val = _Funct(_H_min_val, _mm_shuffle_epi8(_H_min_val, _Shuf_words));
+            _H_min_val = _Funct(_H_min_val, _mm_shuffle_epi8(_H_min_val, _Shuf_bytes));
+            return _H_min_val;
+        }
+
+        static __n128 _H_min(const __n128 _Cur) noexcept {
+            return neon_dupqr8(neon_sminvq8(_Cur).n8_i8[0]);
+        }
+
+        static __n128 _H_max(const __n128 _Cur) noexcept {
+            return neon_dupqr8(neon_smaxvq8(_Cur).n8_i8[0]);
+        }
+
+        static __n128 _H_min_u(const __n128 _Cur) noexcept {
+            return neon_dupqr8(neon_uminvq8(_Cur).n8_u8[0]);
+        }
+
+        static __n128 _H_max_u(const __n128 _Cur) noexcept {
+            return neon_dupqr8(neon_umaxvq8(_Cur).n8_u8[0]);
+        }
+
+        static _Signed_t _Get_any(const __n128 _Cur) noexcept {
+            return neon_umovq8(_Cur, 0);
+        }
+
+        static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
+            return static_cast<_Unsigned_t>(_mm_cvtsi128_si32(_mm_shuffle_epi8(_Idx, _mm_cvtsi32_si128(_H_pos))));
+        }
+
+        static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
+            return neon_cmeqq8(_First, _Second);
+        }
+
+        static __n128 _Cmp_gt(const __n128 _First, const __n128 _Second) noexcept {
+            return neon_cmgtq8(_First, _Second);
+        }
+
+        static __n128 _Min(const __n128 _First, const __n128 _Second, __n128) noexcept {
+            return neon_sminq8(_First, _Second);
+        }
+
+        static __n128 _Max(const __n128 _First, const __n128 _Second, __n128) noexcept {
+            return neon_smaxq8(_First, _Second);
+        }
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
     };
 
     struct _Minmax_traits_2 {
