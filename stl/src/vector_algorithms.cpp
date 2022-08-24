@@ -937,22 +937,6 @@ namespace {
             return neon_addq8(_Idx, neon_dupqr8(1));
         }
 
-        template <class _Fn>
-        static __n128 _H_func(const __n128 _Cur, _Fn _Funct) noexcept {
-            uint8_t _H_min_val = neon_uminvq8(_Cur)
-                const char _Shuf_bytes_imm[] = {14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1};
-            const char _Shuf_words_imm[] = {13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2};
-            const __n128 _Shuf_bytes = neon_ld1m_q8(_Shuf_bytes_imm);
-            const __n128 _Shuf_words = neon_ld1m_q8(_Shuf_words_imm);
-
-            ___n128 _H_min_val = _Cur;
-            _H_min_val = _Funct(_H_min_val, _mm_shuffle_epi32(_H_min_val, _MM_SHUFFLE(1, 0, 3, 2)));
-            _H_min_val = _Funct(_H_min_val, _mm_shuffle_epi32(_H_min_val, _MM_SHUFFLE(2, 3, 0, 1)));
-            _H_min_val = _Funct(_H_min_val, _mm_shuffle_epi8(_H_min_val, _Shuf_words));
-            _H_min_val = _Funct(_H_min_val, _mm_shuffle_epi8(_H_min_val, _Shuf_bytes));
-            return _H_min_val;
-        }
-
         static __n128 _H_min(const __n128 _Cur) noexcept {
             return neon_dupqr8(neon_sminvq8(_Cur).n8_i8[0]);
         }
@@ -970,11 +954,11 @@ namespace {
         }
 
         static _Signed_t _Get_any(const __n128 _Cur) noexcept {
-            return neon_umovq8(_Cur, 0);
+            return neon_smovq8(_Cur, 0);
         }
 
         static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
-            return static_cast<_Unsigned_t>(_mm_cvtsi128_si32(_mm_shuffle_epi8(_Idx, _mm_cvtsi32_si128(_H_pos))));
+            return neon_smovq8(_Idx, _H_pos);
         }
 
         static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
@@ -1007,6 +991,7 @@ namespace {
         static constexpr _Signed_t _Init_min_val = static_cast<_Signed_t>(0x7FFF);
         static constexpr _Signed_t _Init_max_val = static_cast<_Signed_t>(0x8000);
 
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         static __m128i _Sign_correction(const __m128i _Val, const bool _Sign) noexcept {
             alignas(16) static constexpr _Unsigned_t _Sign_corrections[2][8] = {
                 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, {}};
@@ -1070,6 +1055,59 @@ namespace {
         static __m128i _Max(const __m128i _First, const __m128i _Second, __m128i) noexcept {
             return _mm_max_epi16(_First, _Second);
         }
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+        static __n128 _Sign_correction(const __n128 _Val, const bool _Sign) noexcept {
+            alignas(16) static constexpr _Unsigned_t _Sign_corrections[2][8] = {
+                0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, {}};
+            return neon_subq16(_Val, neon_ld1m_q16(reinterpret_cast<const int16_t*>(_Sign_corrections[_Sign])));
+        }
+
+        static __n128 _Inc(__n128 _Idx) noexcept {
+            return neon_addq16(_Idx, neon_dupqr16(1));
+        }
+
+        static __n128 _H_min(const __n128 _Cur) noexcept {
+            return neon_dupqr16(neon_sminvq16(_Cur).n16_i16[0]);
+        }
+
+        static __n128 _H_max(const __n128 _Cur) noexcept {
+            return neon_dupqr16(neon_smaxvq16(_Cur).n16_i16[0]);
+        }
+
+        static __n128 _H_min_u(const __n128 _Cur) noexcept {
+            return neon_dupqr16(neon_uminvq16(_Cur).n16_u16[0]);
+        }
+
+        static __n128 _H_max_u(const __n128 _Cur) noexcept {
+            return neon_dupqr16(neon_umaxvq16(_Cur).n16_u16[0]);
+        }
+
+        static _Signed_t _Get_any(const __n128 _Cur) noexcept {
+            return neon_smovq16(_Cur, 0);
+        }
+
+        static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
+            return neon_umovq16(_Idx, _H_pos);
+        }
+
+        static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
+            return neon_cmeqq16(_First, _Second);
+        }
+
+        static __n128 _Cmp_gt(const __n128 _First, const __n128 _Second) noexcept {
+            return neon_cmgtq16(_First, _Second);
+        }
+
+        static __n128 _Min(const __n128 _First, const __n128 _Second, __n128) noexcept {
+            return neon_sminq16(_First, _Second);
+        }
+
+        static __n128 _Max(const __n128 _First, const __n128 _Second, __n128) noexcept {
+            return neon_smaxq16(_First, _Second);
+        }
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
     };
 
     struct _Minmax_traits_4 {
@@ -1086,6 +1124,7 @@ namespace {
         static constexpr _Signed_t _Init_min_val = static_cast<_Signed_t>(0x7FFF'FFFFUL);
         static constexpr _Signed_t _Init_max_val = static_cast<_Signed_t>(0x8000'0000UL);
 
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         static __m128i _Sign_correction(const __m128i _Val, const bool _Sign) noexcept {
             alignas(16) static constexpr _Unsigned_t _Sign_corrections[2][4] = {
                 0x8000'0000UL, 0x8000'0000UL, 0x8000'0000UL, 0x8000'0000UL, {}};
@@ -1145,6 +1184,59 @@ namespace {
         static __m128i _Max(const __m128i _First, const __m128i _Second, __m128i) noexcept {
             return _mm_max_epi32(_First, _Second);
         }
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+        static __n128 _Sign_correction(const __n128 _Val, const bool _Sign) noexcept {
+            alignas(16) static constexpr _Unsigned_t _Sign_corrections[2][4] = {
+                0x8000'0000UL, 0x8000'0000UL, 0x8000'0000UL, 0x8000'0000UL, {}};
+            return neon_subq32(_Val, neon_ld1m_q32(reinterpret_cast<const int32_t*>(_Sign_corrections[_Sign])));
+        }
+
+        static __n128 _Inc(__n128 _Idx) noexcept {
+            return neon_addq32(_Idx, neon_dupqr16(1));
+        }
+
+        static __n128 _H_min(const __n128 _Cur) noexcept {
+            return neon_dupqr32(_CopyInt32FromFloat(neon_sminvq32(_Cur)));
+        }
+
+        static __n128 _H_max(const __n128 _Cur) noexcept {
+            return neon_dupqr32(_CopyInt32FromFloat(neon_smaxvq32(_Cur)));
+        }
+
+        static __n128 _H_min_u(const __n128 _Cur) noexcept {
+            return neon_dupqr32(_CopyInt32FromFloat(neon_uminvq32(_Cur)));
+        }
+
+        static __n128 _H_max_u(const __n128 _Cur) noexcept {
+            return neon_dupqr32(_CopyInt32FromFloat(neon_umaxvq32(_Cur)));
+        }
+
+        static _Signed_t _Get_any(const __n128 _Cur) noexcept {
+            return neon_smovq32(_Cur, 0);
+        }
+
+        static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
+            return neon_umovq32(_Idx, _H_pos);
+        }
+
+        static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
+            return neon_cmeqq32(_First, _Second);
+        }
+
+        static __n128 _Cmp_gt(const __n128 _First, const __n128 _Second) noexcept {
+            return neon_cmgtq32(_First, _Second);
+        }
+
+        static __n128 _Min(const __n128 _First, const __n128 _Second, __n128) noexcept {
+            return neon_sminq32(_First, _Second);
+        }
+
+        static __n128 _Max(const __n128 _First, const __n128 _Second, __n128) noexcept {
+            return neon_smaxq32(_First, _Second);
+        }
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
     };
 
     struct _Minmax_traits_8 {
@@ -1156,6 +1248,7 @@ namespace {
         static constexpr _Signed_t _Init_min_val = static_cast<_Signed_t>(0x7FFF'FFFF'FFFF'FFFFULL);
         static constexpr _Signed_t _Init_max_val = static_cast<_Signed_t>(0x8000'0000'0000'0000ULL);
 
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         static __m128i _Sign_correction(const __m128i _Val, const bool _Sign) {
             alignas(16) static constexpr _Unsigned_t _Sign_corrections[2][2] = {
                 0x8000'0000'0000'0000ULL, 0x8000'0000'0000'0000ULL, {}};
@@ -1223,6 +1316,59 @@ namespace {
         static __m128i _Max(const __m128i _First, const __m128i _Second, const __m128i _Mask) noexcept {
             return _mm_blendv_epi8(_First, _Second, _Mask);
         }
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+        static __n128 _Sign_correction(const __n128 _Val, const bool _Sign) noexcept {
+            alignas(16) static constexpr _Unsigned_t _Sign_corrections[2][4] = {
+                0x8000'0000UL, 0x8000'0000UL, 0x8000'0000UL, 0x8000'0000UL, {}};
+            return neon_subq64(_Val, neon_ld1m_q32(reinterpret_cast<const int32_t*>(_Sign_corrections[_Sign])));
+        }
+
+        static __n128 _Inc(__n128 _Idx) noexcept {
+            return neon_addq64(_Idx, neon_dupqr16(1));
+        }
+
+        static __n128 _H_min(const __n128 _Cur) noexcept {
+            return neon_dupqr64(neon_smovq64(_Cur, 0) < neon_smovq64(_Cur, 1));
+        }
+
+        static __n128 _H_max(const __n128 _Cur) noexcept {
+            return neon_dupqr64(neon_smovq64(_Cur, 0) > neon_smovq64(_Cur, 1));
+        }
+
+        static __n128 _H_min_u(const __n128 _Cur) noexcept {
+            return neon_dupqr64(neon_umovq64(_Cur, 0) < neon_umovq64(_Cur, 1));
+        }
+
+        static __n128 _H_max_u(const __n128 _Cur) noexcept {
+            return neon_dupqr64(neon_umovq64(_Cur, 0) > neon_umovq64(_Cur, 1));
+        }
+
+        static _Signed_t _Get_any(const __n128 _Cur) noexcept {
+            return neon_smovq64(_Cur, 0);
+        }
+
+        static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
+            return neon_umovq64(_Idx, _H_pos);
+        }
+
+        static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
+            return neon_cmeqq64(_First, _Second);
+        }
+
+        static __n128 _Cmp_gt(const __n128 _First, const __n128 _Second) noexcept {
+            return neon_cmgtq64(_First, _Second);
+        }
+
+        static __n128 _Min(const __n128 _First, const __n128 _Second, __n128 _Mask) noexcept {
+            return neon_bslq(_First, _Second, _Mask);
+        }
+
+        static __n128 _Max(const __n128 _First, const __n128 _Second, __n128 _Mask) noexcept {
+            return neon_bslq(_First, _Second, _Mask);
+        }
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
     };
 
     // _Minmax_element has exactly the same signature as the extern "C" functions
