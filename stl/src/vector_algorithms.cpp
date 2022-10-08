@@ -373,7 +373,9 @@ __declspec(noalias) void __cdecl __std_reverse_trivially_swappable_4(void* _Firs
     ) {
         const void* _Stop_at = _First;
         _Advance_bytes(_Stop_at, _Byte_length(_First, _Last) >> 6 << 5);
+#if defined(_M_IX86) || defined(_VECTOR_X64)
         const __m256i _Shuf = _mm256_set_epi32(0, 1, 2, 3, 4, 5, 6, 7);
+#endif
         do {
             _Advance_bytes(_Last, -32);
 #if defined(_M_IX86) || defined(_VECTOR_X64)
@@ -958,7 +960,7 @@ namespace {
         }
 
         static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
-            return neon_smovq8(_Idx, _H_pos);
+            return neon_tbl1_q8(_Idx, neon_insr8(__n64{}, 0, _H_pos)).n64_u8[0];
         }
 
         static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
@@ -1087,7 +1089,8 @@ namespace {
         }
 
         static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
-            return neon_umovq16(_Idx, _H_pos);
+            static constexpr _Unsigned_t _Shuf[] = {0x0100, 0x0302, 0x0504, 0x0706, 0x0908, 0x0B0A, 0x0D0C, 0x0F0E};
+            return neon_tbl1_q8(_Idx, neon_insr16(__n64{}, 0, _Shuf[_H_pos >> 1])).n64_u16[0];
         }
 
         static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
@@ -1216,7 +1219,7 @@ namespace {
         }
 
         static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
-            return neon_umovq32(_Idx, _H_pos);
+            return _Idx.n128_u32[_H_pos >> 2];
         }
 
         static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
@@ -1348,7 +1351,7 @@ namespace {
         }
 
         static _Unsigned_t _Get_v_pos(const __n128 _Idx, const unsigned long _H_pos) noexcept {
-            return neon_umovq64(_Idx, _H_pos);
+            return _Idx.n128_u64[_H_pos >> 3];
         }
 
         static __n128 _Cmp_eq(const __n128 _First, const __n128 _Second) noexcept {
@@ -1382,7 +1385,11 @@ namespace {
         auto _Cur_min_val       = _Traits::_Init_min_val;
         auto _Cur_max_val       = _Traits::_Init_max_val;
 
-        if (_Byte_length(_First, _Last) >= 16 && _Use_sse42()) {
+        if (_Byte_length(_First, _Last) >= 16
+#if defined(_M_IX86) || defined(_VECTOR_X64)
+            && _Use_sse42()
+#endif // defined(_M_IX86) || defined(_VECTOR_X64)
+        ) {
             size_t _Portion_byte_size = _Byte_length(_First, _Last) & ~size_t{0xF};
 
             if constexpr (_Traits::_Has_portion_max) {
@@ -1396,6 +1403,7 @@ namespace {
             const void* _Stop_at = _First;
             _Advance_bytes(_Stop_at, _Portion_byte_size);
 
+#if defined(_M_IX86) || defined(_VECTOR_X64)
             // Load values and if unsigned adjust them to be signed (for signed vector comparisons)
             __m128i _Cur_vals =
                 _Traits::_Sign_correction(_mm_loadu_si128(reinterpret_cast<const __m128i*>(_First)), _Sign);
@@ -1404,6 +1412,17 @@ namespace {
             __m128i _Cur_vals_max = _Cur_vals; // vector of vertical maximum values
             __m128i _Cur_idx_max  = _mm_setzero_si128(); // vector of vertical maximum indices
             __m128i _Cur_idx      = _mm_setzero_si128(); // current vector of indices
+#elif defined(_VECTOR_ARM64) // ^^^ _M_IX86 || _VECTOR_X64 ^^^ // vvv _VECTOR_ARM64 vvv
+            __n128 _Cur_vals = _Traits::_Sign_correction(neon_ld1m_q8(static_cast<const char*>(_First)), _Sign);
+            __n128 _Cur_vals_min = _Cur_vals;
+            __n128 _Cur_idx_min = neon_dupqr8(0);
+            __n128 _Cur_vals_max = _Cur_vals;
+            __n128 _Cur_idx_max = neon_dupqr8(0);
+            __n128 _Cur_idx = neon_dupqr8(0);
+#else // ^^^ _VECTOR_ARM64 ^^^
+#error Unsupported architecture
+#endif
+
 
             for (;;) {
                 _Advance_bytes(_First, 16);
@@ -1416,7 +1435,7 @@ namespace {
                     // Compute horizontal min and/or max. Determine horizontal and vertical position of it.
 
                     if constexpr ((_Mode & _Mode_min) != 0) {
-                        const __m128i _H_min =
+                        const __m128i I_H_min =
                             _Traits::_H_min(_Cur_vals_min); // Vector populated by the smallest element
                         const auto _H_min_val = _Traits::_Get_any(_H_min); // Get any element of it
 
